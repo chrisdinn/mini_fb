@@ -1,6 +1,7 @@
 require 'digest/md5'
 require 'erb'
 require 'json' unless defined? JSON
+require 'rest_client'
 
 module MiniFB
 
@@ -117,116 +118,31 @@ module MiniFB
     # are passed directly to the server with a few exceptions.
     # The 'sig' value will always be computed automatically.
     # The 'v' version will be supplied automatically if needed.
-    # The 'call_id' defaults to True, which will generate a valid
-    # number. Otherwise it should be a valid number or False to disable.
-
-    # The default return is a parsed json object.
-    # Unless the 'format' and/or 'callback' arguments are given,
-    # in which case the raw text of the reply is returned. The string
-    # will always be returned, even during errors.
 
     # If an error occurs, a FacebookError exception will be raised
     # with the proper code and message.
 
-    # The secret argument should be an instance of FacebookSecret
+    # The secret argument must be an instance of FacebookSecret
     # to hide value from simple introspection.
-    def MiniFB.call( api_key, secret, method, kwargs )
-
-        puts 'kwargs=' + kwargs.inspect if @@logging
-
-        if secret.is_a? String
-            secret = FaceBookSecret.new(secret)
-        end
-
-        # Prepare arguments for call
-        call_id = kwargs.fetch("call_id", true)
-        if call_id == true
-            kwargs["call_id"] = Time.now.tv_sec.to_s
-        else
-            kwargs.delete("call_id")
-        end
-
-        custom_format = kwargs.include?("format") || kwargs.include?("callback")
-        kwargs["format"] ||= "JSON"
-        kwargs["v"] ||= FB_API_VERSION
-        kwargs["api_key"]||= api_key
-        kwargs["method"] ||= method
-
-        file_name = kwargs.delete("filename")
-
-        # Hash with secret
-        arg_string = String.new
-        # todo: convert symbols to strings, symbols break the next line
-        kwargs.sort.each { |kv| arg_string << kv[0] << "=" << kv[1].to_s }
-        kwargs["sig"] = Digest::MD5.hexdigest( arg_string + secret.value.call )
-
-        fb_method = kwargs["method"].downcase
-        if fb_method == "photos.upload"
-            # Then we need a multipart post
-            response = MiniFB.post_upload(file_name, kwargs)
-        else
-
-            begin
-                response = Net::HTTP.post_form( URI.parse(FB_URL), kwargs )
-            rescue SocketError => err
-                # why are we catching this and throwing as different error?  hmmm..
-#                raise IOError.new( "Cannot connect to the facebook server: " + err )
-                raise err
-            end
-        end
-
-
-        # Handle response
-        return response.body if custom_format
-
-
-        body = response.body
-
-        puts 'response=' + body.inspect if @@logging
-        begin
-            data = JSON.parse( body )
-            if data.include?( "error_msg" )
-                raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] )
-            end
-
-        rescue JSON::ParserError => ex
-            if BAD_JSON_METHODS.include?(fb_method) # Little hack because this response isn't valid JSON
-                if body == "0" || body == "false"
-                    return false
-                end
-                return body
-            else
-                raise ex
-            end
-        end
-        return data
-    end
-
-    def MiniFB.post_upload(filename, kwargs)
-      content = File.open(filename, 'rb') { |f| f.read }
-      boundary = Digest::MD5.hexdigest(content)
-      header = {'Content-type' => "multipart/form-data, boundary=#{boundary}"}
-
-      # Build query
-      query = ''
-      kwargs.each { |a, v|
-        query <<
-          "--#{boundary}\r\n" <<
-          "Content-Disposition: form-data; name=\"#{a}\"\r\n\r\n" <<
-          "#{v}\r\n"
-      }
-      query <<
-        "--#{boundary}\r\n" <<
-        "Content-Disposition: form-data; filename=\"#{File.basename(filename)}\"\r\n" <<
-        "Content-Transfer-Encoding: binary\r\n" <<
-        "Content-Type: image/jpeg\r\n\r\n" <<
-        content <<
-        "\r\n" <<
-        "--#{boundary}--"
-
-      # Call Facebook with POST multipart/form-data request
-      uri = URI.parse(FB_URL)
-      Net::HTTP.start(uri.host) {|http| http.post uri.path, query, header}
+    def MiniFB.call( api_key, secret, method, kwargs={} )
+      raise ArgumentError, "secret must be a FaceBookSecret" unless secret.kind_of?(FaceBookSecret)
+      
+      default_keyword_args = { 'format' => 'JSON', 'v' => FB_API_VERSION, 'api_key' => api_key, 'method' => method, 'call_id' => Time.now.tv_sec.to_s }
+      keyword_args = default_keyword_args.merge(kwargs)
+      
+      filename = keyword_args.delete("filename") # Remove filename before signature is generated
+      
+      keyword_args['sig'] = MiniFB.generate_sig(keyword_args, secret)
+    
+      if keyword_args["method"].downcase=="photos.upload" && filename
+        response = RestClient.post FB_URL, keyword_args.merge("file" => File.new(filename))
+      else
+        response = RestClient.post FB_URL, keyword_args
+      end
+      
+      data = JSON.parse(response.body)
+      raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.include?( "error_msg" )
+      data
     end
 
     # Returns true is signature is valid, false otherwise.
@@ -347,4 +263,12 @@ module MiniFB
             @value = Proc.new { value }
         end
     end
+    
+    def self.generate_sig(keyword_args_hash, secret)
+      arg_string = String.new
+      # todo: convert symbols to strings, symbols break the next line
+      keyword_args_hash.sort.each { |kv| arg_string << kv[0].to_s << "=" << kv[1].to_s }
+      Digest::MD5.hexdigest( arg_string + secret.value.call )
+    end
+
 end
