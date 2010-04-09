@@ -144,30 +144,6 @@ module MiniFB
       raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.include?( "error_msg" )
       data
     end
-
-    # Returns true is signature is valid, false otherwise.
-    def MiniFB.verify_signature( secret, arguments )
-        signature = arguments.delete( "fb_sig" )
-        return false if signature.nil?
-
-        unsigned = Hash.new
-        signed = Hash.new
-
-        arguments.each do |k, v|
-            if k =~ /^fb_sig_(.*)/ then
-                signed[$1] = v
-            else
-                unsigned[k] = v
-            end
-        end
-
-        arg_string = String.new
-        signed.sort.each { |kv| arg_string << kv[0] << "=" << kv[1] }
-        if Digest::MD5.hexdigest( arg_string + secret ) == signature
-            return true
-        end
-        return false
-    end
     
     # Validates that the cookies sent by the user are those that were set by facebook. Since your
     # secret is only known by you and facebook it is used to sign all of the cookies set.
@@ -209,49 +185,6 @@ module MiniFB
         login_url << "&next=#{options[:next]}" if options[:next]
         login_url << "&canvas" if options[:canvas]
         login_url
-    end
-
-    # This function expects arguments as a hash, so
-    # it is agnostic to different POST handling variants in ruby.
-    #
-    # Validate the arguments received from facebook. This is usually
-    # sent for the iframe in Facebook's canvas. It is not necessary
-    # to use this on the auth_token and uid passed to callbacks like
-    # post-add and post-remove.
-#
-    # The arguments must be a mapping of to string keys and values
-    # or a string of http request data.
-#
-    # If the data is invalid or not signed properly, an empty
-    # dictionary is returned.
-#
-    # The secret argument should be an instance of FacebookSecret
-    # to hide value from simple introspection.
-#
-    # DEPRECATED, use verify_signature instead
-    def MiniFB.validate( secret, arguments )
-
-        signature = arguments.delete( "fb_sig" )
-        return arguments if signature.nil?
-
-        unsigned = Hash.new
-        signed = Hash.new
-
-        arguments.each do |k, v|
-            if k =~ /^fb_sig_(.*)/ then
-                signed[$1] = v
-            else
-                unsigned[k] = v
-            end
-        end
-
-        arg_string = String.new
-        signed.sort.each { |kv| arg_string << kv[0] << "=" << kv[1] }
-        if Digest::MD5.hexdigest( arg_string + secret ) != signature
-            unsigned # Hash is incorrect, return only unsigned fields.
-        else
-            unsigned.merge signed
-        end
     end
 
     class FaceBookSecret
