@@ -86,6 +86,11 @@ This is as simple as calling:
 
 The file_name parameter will be used as the file data.
 
+Tests
+-----
+
+To run tests, install [Bundler](http://gembundler.com/), from the project directory run `bundle install`, then `rake tests`
+
 
 Support
 --------
