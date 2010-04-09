@@ -1,4 +1,3 @@
-
 begin
     require 'jeweler'
     Jeweler::Tasks.new do |gemspec|
@@ -13,4 +12,12 @@ begin
     end
 rescue LoadError
     puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
+end
+
+require 'rake/testtask'
+Rake::TestTask.new('test') do |t|
+    t.libs << 'test'
+	  t.pattern = 'test/*_test.rb'
+	  t.verbose = true
+	  t.warning = false
 end

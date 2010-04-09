@@ -30,7 +30,6 @@ module MiniFB
     class Session
         attr_accessor :api_key, :secret_key, :session_key, :uid
 
-
         def initialize(api_key, secret_key, session_key, uid)
             @api_key = api_key
             @secret_key = FaceBookSecret.new secret_key
@@ -49,13 +48,11 @@ module MiniFB
             Photos.new(self)
         end
 
-
         def call(method, params={})
             return MiniFB.call(api_key, secret_key, method, params.update("session_key"=>session_key))
         end
-
-
     end
+
     class User
         FIELDS = [:uid, :status, :political, :pic_small, :name, :quotes, :is_app_user, :tv, :profile_update_time, :meeting_sex, :hs_info, :timezone, :relationship_status, :hometown_location, :about_me, :wall_count, :significant_other_id, :pic_big, :music, :work_history, :sex, :religion, :notes_count, :activities, :pic_square, :movies, :has_added_app, :education_history, :birthday, :birthday_date, :first_name, :meeting_for, :last_name, :interests, :current_location, :pic, :books, :affiliations, :locale, :profile_url, :proxied_email, :email, :email_hashes, :allowed_restrictions, :pic_with_logo, :pic_big_with_logo, :pic_small_with_logo, :pic_square_with_logo]
         STANDARD_FIELDS = [:uid, :first_name, :last_name, :name, :timezone, :birthday, :sex, :affiliations, :locale, :profile_url, :proxied_email, :email]
@@ -205,7 +202,7 @@ module MiniFB
         return data
     end
 
-     def MiniFB.post_upload(filename, kwargs)
+    def MiniFB.post_upload(filename, kwargs)
       content = File.open(filename, 'rb') { |f| f.read }
       boundary = Digest::MD5.hexdigest(content)
       header = {'Content-type' => "multipart/form-data, boundary=#{boundary}"}
