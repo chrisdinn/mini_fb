@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = [
     "README.markdown"
   ]
-  s.files = Dir.glob("lib/*") + "README.markdown"
+  s.files = Dir.glob("lib/*") + ["README.markdown"]
   s.homepage = %q{http://github.com/chrisdinn/mini_fb}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
