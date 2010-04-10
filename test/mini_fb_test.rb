@@ -28,7 +28,7 @@ class MiniFBTests < Test::Unit::TestCase
     
     # Facebook RESTful API call tests
 
-    def test_call_to_facebook_restful_api_with_no_keyword_args
+    def test_call_to_facebook_restful_api
       expected_keyword_args = { 
         'format' => 'JSON' , 
         'v' => MiniFB::FB_API_VERSION, 
@@ -45,7 +45,7 @@ class MiniFBTests < Test::Unit::TestCase
       assert_equal JSON.parse(response.body), MiniFB.call('test_api_key', @secret, 'method', {})
     end
     
-    def test_call_to_facebook_api_photo_upload
+    def test_facebook_api_photo_upload
       expected_keyword_args = { 
         'format' => 'JSON' , 
         'v' => MiniFB::FB_API_VERSION, 
@@ -63,8 +63,7 @@ class MiniFBTests < Test::Unit::TestCase
       
       assert_equal JSON.parse(response.body), MiniFB.call('test_api_key', @secret, 'photos.upload', {'filename' => "some_file.jpg"})
     end
-    
-    
+        
     def test_bad_api_request_raises_facebook_error
       mock_request = stub(:body => 'request_body')
       RestClient.expects(:post).returns(mock_request)
@@ -86,5 +85,16 @@ class MiniFBTests < Test::Unit::TestCase
       assert_nothing_raised do
         MiniFB.call('apikey', MiniFB::FaceBookSecret.new('secret'), 'method', {})
       end
+    end
+
+    # Facebook signature verification tests
+    
+    def test_verify_facebook_connect_signature
+      test_fb_creds = { 'user' => "1234", 'session_key' => "session_key" }
+      test_cookies = {'MINIFBTEST' => MiniFB.generate_sig(test_fb_creds, @secret), 'disctraction_cookie' => "gotcha?", 'MINIFBTEST_user' => "1234", 'MINIFBTEST_session_key' => "session_key"}
+      
+      assert MiniFB.verify_connect_signature('MINIFBTEST', @secret.value.call, test_cookies)
+      assert ! MiniFB.verify_connect_signature('MINIFBTEST', "fake-secret", test_cookies)
+      assert ! MiniFB.verify_connect_signature('BADAPIKEY', "fake-secret", test_cookies)
     end
 end

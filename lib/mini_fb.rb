@@ -9,16 +9,6 @@ module MiniFB
     FB_URL = "http://api.facebook.com/restserver.php"
     FB_API_VERSION = "1.0"
 
-    @@logging = false
-
-    def self.enable_logging
-        @@logging = true
-    end
-
-    def self.disable_logging
-        @@logging = false
-    end
-
     class FaceBookError < StandardError
         attr_accessor :code
         # Error that happens during a facebook call.
@@ -111,9 +101,6 @@ module MiniFB
         end
     end
 
-    BAD_JSON_METHODS = ["users.getloggedinuser", "auth.promotesession", "users.hasapppermission",
-                        "Auth.revokeExtendedPermission", "pages.isAdmin", "pages.isFan"].collect { |x| x.downcase }
-
     # Call facebook server with a method request. Most keyword arguments
     # are passed directly to the server with a few exceptions.
     # The 'sig' value will always be computed automatically.
@@ -155,24 +142,14 @@ module MiniFB
     def MiniFB.verify_connect_signature(api_key, secret, cookies)
       signature = cookies[api_key]
       return false if signature.nil?
-
-      unsigned = Hash.new
       signed = Hash.new
-
       cookies.each do |k, v|
-        if k =~ /^#{api_key}_(.*)/ then
+        if k =~ /^#{api_key}_(.*)/
           signed[$1] = v
-        else
-          unsigned[k] = v
         end
       end
-
-      arg_string = String.new
-      signed.sort.each {|kv| arg_string << kv[0] << "=" << kv[1] }
-      if Digest::MD5.hexdigest(arg_string + secret) == signature
-        return true
-      end
-      return false
+      return true if generate_sig(signed, FaceBookSecret.new(secret)) == signature
+      false
     end
 
     # Returns the login/add app url for your application.
