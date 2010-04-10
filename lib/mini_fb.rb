@@ -128,7 +128,7 @@ module MiniFB
       else
         response = RestClient.post FB_URL, keyword_args
       end
-      data = JSON.parse(response)
+      data = JSON.parse(response.body)
       raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.include?( "error_msg" )
       data
     end

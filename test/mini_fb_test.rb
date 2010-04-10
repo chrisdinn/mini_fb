@@ -6,7 +6,7 @@ class MiniFBTests < Test::Unit::TestCase
        @current_time = Time.now
        Time.stubs(:now).returns(@current_time)
        
-       @mock_user_hash = '{"testArray":["212", "646"], "test":"JSON response"}'
+       @mock_user_hash = stub(:body => '{"testArray":["212", "646"], "test":"JSON response"}')
        RestClient.stubs(:post).raises(ExpectationNotMetError) # Prevent actual HTTP request 
        
        @secret = MiniFB::FaceBookSecret.new("secret")     
@@ -41,7 +41,7 @@ class MiniFBTests < Test::Unit::TestCase
       }
       expected_default_keyword_args['sig'] = MiniFB.generate_sig(expected_default_keyword_args, @secret)
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_default_keyword_args).returns(@mock_user_hash)
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', @secret, 'method')
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'method')
     end
     
     def test_with_symbol_keyword_arguments
@@ -56,7 +56,7 @@ class MiniFBTests < Test::Unit::TestCase
       }
       expected_keyword_args['sig'] = MiniFB.generate_sig(expected_keyword_args, @secret)
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_keyword_args).returns(@mock_user_hash)
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', @secret, 'method', :custom_keyword_1 => '123')
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'method', :custom_keyword_1 => '123')
     end
     
     def test_with_array_keyword_arguments
@@ -71,7 +71,7 @@ class MiniFBTests < Test::Unit::TestCase
       }
       expected_keyword_args['sig'] = MiniFB.generate_sig(expected_keyword_args, @secret)
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_keyword_args).returns(@mock_user_hash)
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', @secret, 'method', :custom_keyword_array => [1,2,3])
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'method', :custom_keyword_array => [1,2,3])
     end
     
     def test_photo_upload
@@ -88,11 +88,12 @@ class MiniFBTests < Test::Unit::TestCase
       File.expects(:new).with("some_file.jpg").returns("file_object")
           
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_keyword_args).returns(@mock_user_hash)
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', @secret, 'Photos.upload', :file => "some_file.jpg")
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'Photos.upload', :file => "some_file.jpg")
     end
             
     def test_bad_api_request_raises_facebook_error
-      RestClient.expects(:post).returns('{"error_msg":"Permissions error", "error_code":200}')
+      response = stub(:body => '{"error_msg":"Permissions error", "error_code":200}')
+      RestClient.expects(:post).returns(response)
       
       assert_raise MiniFB::FaceBookError do
         MiniFB.call('test_api_key', @secret, 'method', {})
@@ -112,8 +113,8 @@ class MiniFBTests < Test::Unit::TestCase
       expected_default_keyword_args['sig'] = MiniFB.generate_sig(expected_default_keyword_args, facebook_secret)
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_default_keyword_args).returns(@mock_user_hash).twice
       
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', secret, 'method')
-      assert_equal JSON.parse(@mock_user_hash), MiniFB.call('test_api_key', facebook_secret, 'method')      
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', secret, 'method')
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', facebook_secret, 'method')      
     end
 
     # Facebook signature verification tests
