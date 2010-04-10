@@ -17,8 +17,6 @@ module MiniFB
     end
 
     class Session
-        attr_accessor :api_key, :secret_key, :session_key, :uid
-
         def initialize(api_key, secret_key, session_key, uid)
             @api_key = api_key
             @secret_key = FaceBookSecret.new secret_key
@@ -29,7 +27,7 @@ module MiniFB
         # returns current user
         def user
             return @user unless @user.nil?
-            @user = User.new(MiniFB.call(@api_key, @secret_key, "Users.getInfo", "session_key"=>@session_key, "uids"=>@uid, "fields"=>User.all_fields)[0], self)
+            @user = User.new(MiniFB.call(@api_key, @secret_key, "Users.getInfo", :session_key => @session_key, :uids => @uid, :fields => User.all_fields)[0], self)
             @user
         end
 
@@ -38,7 +36,7 @@ module MiniFB
         end
 
         def call(method, params={})
-            return MiniFB.call(api_key, secret_key, method, params.update("session_key"=>@session_key))
+            return MiniFB.call(@api_key, @secret_key, method, params.update(:session_key => @session_key))
         end
     end
 
