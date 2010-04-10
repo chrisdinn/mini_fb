@@ -13,11 +13,16 @@ We're using gemcutter so be sure to have gemcutter as a source, then:
 General Usage
 -------------
 
-The most general case is to use MiniFB.call method:
+The most general case is to use MiniFB.call:
 
-    user_hash = MiniFB.call(FB_API_KEY, FB_SECRET, "Users.getInfo", "session_key"=>@session_key, "uids"=>@uid, "fields"=>User.all_fields)
+    user_hash = MiniFB.call(FB_API_KEY, FB_SECRET, "Users.getInfo", :session_key => @session_key, :uids =>@uid, :fields => User.all_fields)
 
-Which simply returns the parsed json response from Facebook.
+You can also upload a photo:
+
+	photo_hash = MiniFB.call(FB_API_KEY, FB_SECRET, "Photos.upload", :session_key => @session_key, :file => "image.jpg")
+
+MiniFB.call simply returns the parsed json response from Facebook. 
+
 
 Some Higher Level Objects for Common Uses
 ----------------------

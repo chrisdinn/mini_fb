@@ -1,6 +1,4 @@
-require 'digest/md5'
-require 'erb'
-require 'json' unless defined? JSON
+require 'json'
 require 'rest_client'
 
 module MiniFB
@@ -40,7 +38,7 @@ module MiniFB
         end
 
         def call(method, params={})
-            return MiniFB.call(api_key, secret_key, method, params.update("session_key"=>session_key))
+            return MiniFB.call(api_key, secret_key, method, params.update("session_key"=>@session_key))
         end
     end
 
@@ -108,16 +106,22 @@ module MiniFB
 
     # If an error occurs, a FacebookError exception will be raised
     # with the proper code and message.
-
-    # The secret argument must be an instance of FacebookSecret
-    # to hide value from simple introspection.
     def MiniFB.call( api_key, secret, method, kwargs={} )
-      raise ArgumentError, "secret must be a FaceBookSecret" unless secret.kind_of?(FaceBookSecret)
+      secret = FaceBookSecret.new(secret) unless secret.kind_of?(FaceBookSecret)
+      
+      kwargs.each do |key, value|
+          kwargs.delete(key)
+          if value.kind_of?(Hash)||value.kind_of?(Array)
+            kwargs[key.to_s] = JSON(value)
+          else
+            kwargs[key.to_s] = value
+          end
+      end
       
       default_keyword_args = { 'format' => 'JSON', 'v' => FB_API_VERSION, 'api_key' => api_key, 'method' => method, 'call_id' => Time.now.tv_sec.to_s }
       keyword_args = default_keyword_args.merge(kwargs)
       
-      filename = keyword_args.delete("filename") # Remove filename before signature is generated
+      filename = keyword_args.delete("file") # Remove file before signature is generated
       
       keyword_args['sig'] = MiniFB.generate_sig(keyword_args, secret)
     
@@ -126,8 +130,7 @@ module MiniFB
       else
         response = RestClient.post FB_URL, keyword_args
       end
-      
-      data = JSON.parse(response.body)
+      data = JSON.parse(response)
       raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.include?( "error_msg" )
       data
     end
@@ -176,7 +179,6 @@ module MiniFB
     
     def self.generate_sig(keyword_args_hash, secret)
       arg_string = String.new
-      # todo: convert symbols to strings, symbols break the next line
       keyword_args_hash.sort.each { |kv| arg_string << kv[0].to_s << "=" << kv[1].to_s }
       Digest::MD5.hexdigest( arg_string + secret.value.call )
     end
