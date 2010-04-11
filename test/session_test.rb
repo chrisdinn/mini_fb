@@ -27,9 +27,13 @@ class SessionTests < Test::Unit::TestCase
   def test_user    
     user = mock('user')
     MiniFB.expects(:call).with('api_key', @secret, "Users.getInfo", :session_key => 'session_key', :uids => 'uid', :fields => MiniFB::User.all_fields).returns("called")
-    MiniFB::User.expects(:new).returns(user)
+    MiniFB::User.expects(:new).returns(user).once
     
     assert_equal user, @session.user
+    
+    # API/User.new calls are expected once, for this second assertion
+    # to pass, the user attribute must be cached
+    assert_equal user, @session.user 
   end
   
 end

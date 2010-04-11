@@ -30,7 +30,6 @@ module MiniFB
         def user
             return @user unless @user.nil?
             @user = User.new(MiniFB.call(@api_key, @secret_key, "Users.getInfo", :session_key => @session_key, :uids => @user_id, :fields => User.all_fields)[0], self)
-            @user
         end
 
         def photos
