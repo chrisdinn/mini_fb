@@ -17,6 +17,13 @@ class SessionTests < Test::Unit::TestCase
     assert @session.photos.kind_of?(MiniFB::Photos)
   end
   
+  def test_user_id
+    assert_equal 'uid', @session.user_id
+    assert_raises NoMethodError do
+      @session.user_id = "new_id"
+    end
+  end
+
   def test_user    
     user = mock('user')
     MiniFB.expects(:call).with('api_key', @secret, "Users.getInfo", :session_key => 'session_key', :uids => 'uid', :fields => MiniFB::User.all_fields).returns("called")
