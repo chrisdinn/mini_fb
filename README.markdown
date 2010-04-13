@@ -1,7 +1,7 @@
 MiniFB - the simple miniature facebook library
 ==============================================
 
-MiniFB is a small, lightweight Ruby library for interacting with the [Facebook RESTful API][].
+MiniFB is a lightweight Ruby library for interacting with the [Facebook RESTful API][].
 
 Installation
 -------------
@@ -98,7 +98,8 @@ The `:file` parameter will be used as the file data.
 Tests
 -----
 
-To run tests, install [Bundler](http://gembundler.com/), from the project directory run `bundle install`, then `rake tests`
+MiniFB has complete test coverage. To run tests, install [Bundler](http://gembundler.com/), from the project directory 
+run `bundle install`, then `rake tests`
 
 
 Support
