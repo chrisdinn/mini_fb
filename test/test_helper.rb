@@ -1,11 +1,10 @@
+require 'test/unit'
 require "rubygems"
 require "bundler"
 
-Bundler.setup
+Bundler.setup(:default, :test)
+Bundler.require(:default, :test)
 
-require 'test/unit'
-require 'redgreen'
 require 'mini_fb'
-require 'mocha'
 
 class ExpectationNotMetError < StandardError; end

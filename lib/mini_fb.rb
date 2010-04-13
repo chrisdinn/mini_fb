@@ -5,6 +5,7 @@ module MiniFB
 
     # Global constants
     FB_URL = "http://api.facebook.com/restserver.php"
+    FB_VIDEO_URL = "http://api-video.facebook.com/restserver.php"
     FB_API_VERSION = "1.0"
 
     class FaceBookError < StandardError
@@ -107,31 +108,29 @@ module MiniFB
     # with the proper code and message.
     def MiniFB.call( api_key, secret, method, kwargs={} )
       secret = FaceBookSecret.new(secret) unless secret.kind_of?(FaceBookSecret)
-      
-      kwargs.each do |key, value|
-          kwargs.delete(key)
-          if value.kind_of?(Hash)||value.kind_of?(Array)
-            kwargs[key.to_s] = JSON(value)
-          else
-            kwargs[key.to_s] = value
-          end
-      end
-      
+
       default_keyword_args = { 'format' => 'JSON', 'v' => FB_API_VERSION, 'api_key' => api_key, 'method' => method, 'call_id' => Time.now.tv_sec.to_s }
-      keyword_args = default_keyword_args.merge(kwargs)
+      keyword_args = default_keyword_args.merge(standardize_keyword_args(kwargs))
+     
+      filename = keyword_args.delete("file") # Remove file before signature is generated    
+      keyword_args['sig'] = generate_sig(keyword_args, secret)
       
-      filename = keyword_args.delete("file") # Remove file before signature is generated
-      
-      keyword_args['sig'] = MiniFB.generate_sig(keyword_args, secret)
-    
-      if keyword_args["method"].downcase=="photos.upload" && filename
-        response = RestClient.post FB_URL, keyword_args.merge("file" => File.new(filename))
+      if method.downcase=='video.upload'  
+          fb_api_url = FB_VIDEO_URL
       else
-        response = RestClient.post FB_URL, keyword_args
+          fb_api_url = FB_URL
       end
-      data = JSON.parse(response.body)
-      raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.include?( "error_msg" )
-      data
+      
+      if filename&&["photos.upload", 'video.upload'].include?(method.downcase)      
+        keyword_args.merge!("file" => File.new(filename)) 
+      end
+      
+      response = RestClient.post fb_api_url, keyword_args      
+      data = parse_response(response.body)  
+      
+      raise FaceBookError.new( data["error_code"] || 1, data["error_msg"] ) if data.kind_of?(Hash)&&data.include?( "error_msg" )
+      
+      return data
     end
     
     # Validates that the cookies sent by the user are those that were set by facebook. Since your
@@ -176,10 +175,36 @@ module MiniFB
         end
     end
     
+    private
+    
     def self.generate_sig(keyword_args_hash, secret)
       arg_string = String.new
       keyword_args_hash.sort.each { |kv| arg_string << kv[0].to_s << "=" << kv[1].to_s }
       Digest::MD5.hexdigest( arg_string + secret.value.call )
     end
-
+        
+    def self.standardize_keyword_args(kwargs)
+      kwargs.each do |key, value|
+          kwargs.delete(key)
+          if value.kind_of?(Hash)||value.kind_of?(Array)
+            kwargs[key.to_s] = JSON(value)
+          else
+            kwargs[key.to_s] = value
+          end
+      end
+    end
+    
+    def self.parse_response(response_body)
+      begin
+        return JSON.parse(response_body)
+      rescue JSON::ParserError => e
+        if response_body=='true'
+          return true
+        elsif response_body==response_body.to_i.to_s # (is it an integer?)  
+          return response_body.to_i
+        else
+          return response_body # For our purposes, it's now just a string 
+        end
+      end
+    end
 end

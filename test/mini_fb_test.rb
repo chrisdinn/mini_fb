@@ -75,6 +75,7 @@ class MiniFBTests < Test::Unit::TestCase
     end
     
     def test_photo_upload
+      mock_file = mock('image_file')
       expected_keyword_args = { 
         'format' => 'JSON' , 
         'v' => MiniFB::FB_API_VERSION, 
@@ -83,20 +84,39 @@ class MiniFBTests < Test::Unit::TestCase
         'call_id' => @current_time.tv_sec.to_s,
       }
       expected_keyword_args['sig'] = MiniFB.generate_sig(expected_keyword_args, @secret)
-      expected_keyword_args["file"] = "file_object"
+      expected_keyword_args["file"] = mock_file
       
-      File.expects(:new).with("some_file.jpg").returns("file_object")
+      File.expects(:new).with("some_file.jpg").returns(mock_file)
           
       RestClient.expects(:post).with(MiniFB::FB_URL, expected_keyword_args).returns(@mock_user_hash)
       assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'Photos.upload', :file => "some_file.jpg")
     end
-            
+    
+    def test_video_upload
+      mock_file = mock('video_file')
+      expected_keyword_args = { 
+        'format' => 'JSON' , 
+        'v' => MiniFB::FB_API_VERSION, 
+        'api_key' => 'test_api_key', 
+        'method' => 'Video.upload',
+        'call_id' => @current_time.tv_sec.to_s,
+        'session_key' => 'session_key'
+      }
+      expected_keyword_args['sig'] = MiniFB.generate_sig(expected_keyword_args, @secret)
+      expected_keyword_args["file"] = mock_file
+
+      File.expects(:new).with("some_file.mov").returns(mock_file)
+          
+      RestClient.expects(:post).with(MiniFB::FB_VIDEO_URL, expected_keyword_args).returns(@mock_user_hash)
+      assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', @secret, 'Video.upload', :file => "some_file.mov", :session_key => 'session_key')
+    end
+           
     def test_bad_api_request_raises_facebook_error
       response = stub(:body => '{"error_msg":"Permissions error", "error_code":200}')
       RestClient.expects(:post).returns(response)
       
       assert_raise MiniFB::FaceBookError do
-        MiniFB.call('test_api_key', @secret, 'method', {})
+        MiniFB.call('test_api_key', @secret, 'method')
       end
     end
     
@@ -117,6 +137,30 @@ class MiniFBTests < Test::Unit::TestCase
       assert_equal JSON.parse(@mock_user_hash.body), MiniFB.call('test_api_key', facebook_secret, 'method')      
     end
 
+    def test_api_response_integer_not_json # some API methods return a simple integer
+      user_id = 518018845
+      response = stub(:body => user_id.to_s)
+      RestClient.expects(:post).returns(response)
+    
+      assert_equal 518018845, MiniFB.call('test_api_key', @secret, 'Users.getloggedinuser')
+    end
+    
+    def test_api_response_boolean_string_not_json # some API methods return 'true' to denote success
+      string_api_response = "true"
+      response = stub(:body => string_api_response)
+      RestClient.expects(:post).returns(response)
+    
+      assert_equal true, MiniFB.call('test_api_key', @secret, 'Auth.revokeExtendedPermission', :perm => "email")
+    end
+    
+    def test_api_response_catchall_return_string_not_json # some API methods return a plain string
+      string_api_response = "3e4a22bb2f5ed75114b0fc9995ea85f1"
+      response = stub(:body => string_api_response)
+      RestClient.expects(:post).returns(response)
+    
+      assert_equal string_api_response, MiniFB.call('test_api_key', @secret, 'Auth.promoteSession', :session_key => "current_session_key")
+    end
+    
     # Facebook signature verification tests
     
     def test_verify_facebook_connect_signature
