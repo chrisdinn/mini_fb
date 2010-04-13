@@ -6,7 +6,7 @@ MiniFB is a lightweight Ruby library for interacting with the [Facebook RESTful 
 Installation
 -------------
 
-We're using gemcutter so be sure to have gemcutter as a source, then: 
+Be sure you have rubygems.org as gem source, then: 
 
     gem install mini_fb
 
